@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Training">
+<meta name="theme-color" content="#0a1628">
+<title>Trainingsplan</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f7f4ee;
+  --navy-dark: #0a1628;
+  --navy: #122140;
+  --navy-mid: #1a3055;
+  --navy-light: #224070;
+  --accent: #2a6fad;
+  --text-on-dark: #f0ece3;
+  --text-muted-dark: #8faac8;
+  --text-on-light: #0d1f36;
+  --text-muted-light: #4a5e7a;
+  --border-dark: rgba(255,255,255,0.1);
+  --border-light: rgba(10,22,40,0.14);
+  --card: #ffffff;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html, body {
+  height: 100%; background: var(--navy-dark);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 16px; -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+body { display: flex; flex-direction: column; align-items: center; background: var(--bg); }
+
+#app { width: 100%; max-width: 480px; min-height: 100dvh; display: flex; flex-direction: column; background: var(--bg); }
+
+/* TOP BAR */
+.top-bar {
+  background: var(--navy-dark);
+  padding: calc(var(--safe-top) + 14px) 16px 12px;
+  display: flex; justify-content: space-between; align-items: center;
+  position: sticky; top: 0; z-index: 20;
+}
+.top-bar h1 { color: var(--text-on-dark); font-size: clamp(17px,4.5vw,20px); font-weight: 600; letter-spacing: -0.3px; }
+.menu-btn { background: transparent; border: none; color: var(--text-on-dark); font-size: 22px; cursor: pointer; padding: 4px 6px; line-height: 1; -webkit-tap-highlight-color: transparent; }
+
+/* MENU DRAWER */
+.menu-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 30; }
+.menu-overlay.open { display: block; }
+.menu-drawer {
+  position: fixed; top: 0; right: -320px; width: 300px; height: 100%;
+  background: var(--navy-dark); z-index: 40;
+  padding: calc(var(--safe-top) + 16px) 20px 40px;
+  transition: right 0.28s cubic-bezier(.4,0,.2,1);
+  overflow-y: auto; border-left: 1px solid var(--border-dark);
+}
+.menu-drawer.open { right: 0; }
+.menu-close { background: transparent; border: none; color: var(--text-muted-dark); font-size: 22px; cursor: pointer; float: right; margin-bottom: 24px; -webkit-tap-highlight-color: transparent; }
+.menu-section-title { color: var(--text-muted-dark); font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 10px; margin-top: 24px; }
+.menu-section-title:first-of-type { margin-top: 8px; }
+
+/* COLOR THEMES */
+.theme-options { display: flex; flex-wrap: wrap; gap: 10px; }
+.theme-btn {
+  width: 52px; height: 52px; border-radius: 12px; border: 2px solid transparent;
+  cursor: pointer; display: flex; flex-direction: column; overflow: hidden;
+  -webkit-tap-highlight-color: transparent; transition: border-color 0.15s;
+}
+.theme-btn.active { border-color: var(--accent); }
+.theme-btn .swatch-top { flex: 1; }
+.theme-btn .swatch-bot { height: 18px; }
+
+/* BODY WEIGHT */
+.bw-section { margin-top: 4px; }
+.bw-input-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: flex-end; }
+.bw-field { flex: 1; }
+.bw-field label { display: block; color: var(--text-muted-dark); font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
+.bw-field input {
+  width: 100%; padding: 8px 10px; border-radius: 7px;
+  border: 1px solid var(--border-dark); background: var(--navy-mid);
+  color: var(--text-on-dark); font-size: 14px; font-family: inherit;
+  -webkit-appearance: none; appearance: none; min-height: 38px;
+}
+.bw-field input:focus { outline: none; border-color: var(--accent); }
+.bw-save-btn {
+  background: var(--accent); color: #fff; border: none; border-radius: 7px;
+  padding: 8px 14px; font-size: 13px; font-weight: 500; cursor: pointer;
+  font-family: inherit; min-height: 38px; flex-shrink: 0; -webkit-tap-highlight-color: transparent;
+}
+.bw-chart-wrap {
+  position: relative; width: 100%; height: 130px;
+  border: 1px solid var(--border-dark); border-radius: 10px;
+  overflow: hidden; background: var(--navy-mid); margin-bottom: 10px;
+}
+.bw-zoom-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.bw-zoom-row label { color: var(--text-muted-dark); font-size: 11px; white-space: nowrap; }
+.bw-zoom-row input[type="range"] { flex: 1; height: 4px; accent-color: var(--accent); cursor: pointer; }
+.zoom-val { color: var(--text-on-dark); font-size: 11px; font-weight: 500; min-width: 28px; text-align: right; }
+.bw-entry-list { max-height: 180px; overflow-y: auto; }
+.entry-item { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.entry-item:last-child { border-bottom: none; }
+.entry-info { display: flex; gap: 10px; align-items: center; }
+.entry-date { color: var(--text-muted-dark); font-size: 12px; }
+.entry-kg { color: var(--text-on-dark); font-size: 13px; font-weight: 500; }
+.entry-del { background: transparent; border: none; color: rgba(240,149,149,0.5); font-size: 16px; cursor: pointer; padding: 0 4px; line-height: 1; -webkit-tap-highlight-color: transparent; }
+.entry-del:active { color: #f09595; }
+.show-all-btn { width: 100%; background: transparent; border: none; color: var(--accent); font-size: 12px; padding: 8px 0 2px; cursor: pointer; font-family: inherit; text-align: center; -webkit-tap-highlight-color: transparent; }
+
+/* DAY TABS */
+.day-scroll {
+  background: var(--navy); display: flex; gap: 6px; padding: 10px 12px;
+  overflow-x: auto; border-bottom: 1px solid var(--border-dark);
+  -webkit-overflow-scrolling: touch; scrollbar-width: none; flex-shrink: 0;
+}
+.day-scroll::-webkit-scrollbar { display: none; }
+.day-btn {
+  flex-shrink: 0; padding: 7px 14px; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.15); background: transparent;
+  color: var(--text-on-dark); font-size: clamp(12px,3.5vw,14px); font-weight: 500;
+  cursor: pointer; -webkit-tap-highlight-color: transparent; min-height: 36px;
+}
+.day-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.day-btn:active { opacity: 0.7; }
+
+/* CONTENT */
+.content { padding: 12px; flex: 1; padding-bottom: calc(12px + var(--safe-bottom)); }
+
+/* EXERCISE OVERVIEW CARD (list view) */
+.ex-overview-card {
+  background: var(--card); border-radius: 12px;
+  border: 1px solid var(--border-light); margin-bottom: 8px;
+  display: flex; align-items: center; padding: 12px 14px;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  gap: 10px; transition: box-shadow 0.15s;
+}
+.ex-overview-card:active { box-shadow: 0 0 0 2px var(--accent); }
+.ex-ov-info { flex: 1; min-width: 0; }
+.ex-ov-name { color: var(--text-on-light); font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ex-ov-name.placeholder { color: var(--text-muted-light); font-weight: 400; }
+.ex-ov-meta { color: var(--text-muted-light); font-size: 12px; margin-top: 2px; }
+.ex-ov-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+.ex-ov-kg { background: rgba(42,111,173,0.12); color: var(--accent); font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
+.ex-ov-arrow { color: var(--text-muted-light); font-size: 16px; }
+
+/* ADD EXERCISE */
+.add-ex-btn {
+  width: 100%; background: transparent; border: 1.5px dashed var(--border-light);
+  border-radius: 10px; padding: 12px; color: var(--text-muted-light);
+  font-size: clamp(13px,3.5vw,14px); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  font-family: inherit; margin-bottom: 10px; min-height: 44px;
+  -webkit-tap-highlight-color: transparent;
+}
+.add-ex-btn:active { color: var(--accent); border-color: var(--accent); }
+
+/* DETAIL VIEW (slide-in) */
+.detail-view {
+  position: fixed; inset: 0; background: var(--bg); z-index: 25;
+  transform: translateX(100%); transition: transform 0.28s cubic-bezier(.4,0,.2,1);
+  overflow-y: auto; padding-bottom: calc(20px + var(--safe-bottom));
+  max-width: 480px; left: 50%; margin-left: -240px;
+}
+@media (max-width: 480px) { .detail-view { left: 0; margin-left: 0; max-width: 100%; } }
+.detail-view.open { transform: translateX(0); }
+.detail-topbar {
+  background: var(--navy-dark); padding: calc(var(--safe-top) + 14px) 16px 12px;
+  display: flex; align-items: center; gap: 12px;
+  position: sticky; top: 0; z-index: 5;
+}
+.back-btn { background: transparent; border: none; color: var(--text-on-dark); font-size: 22px; cursor: pointer; -webkit-tap-highlight-color: transparent; padding: 2px 4px; }
+.detail-title { color: var(--text-on-dark); font-size: 17px; font-weight: 600; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.detail-del-btn { background: transparent; border: none; color: rgba(240,149,149,0.7); font-size: 13px; cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent; padding: 4px 2px; }
+
+.detail-body { padding: 14px; }
+.detail-section { background: var(--card); border-radius: 12px; border: 1px solid var(--border-light); padding: 14px; margin-bottom: 12px; }
+.detail-section-title { color: var(--text-muted-light); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; font-weight: 500; }
+.row { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-end; }
+.field { flex: 1; min-width: 0; }
+.field label { display: block; font-size: 11px; color: var(--text-muted-light); margin-bottom: 4px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.4px; }
+.field select, .field input[type="number"], .field input[type="date"], .field input[type="text"] {
+  width: 100%; padding: 8px 10px; border-radius: 7px; border: 1px solid var(--border-light);
+  background: var(--bg); color: var(--text-on-light); font-size: clamp(13px,3.5vw,14px);
+  font-family: inherit; -webkit-appearance: none; appearance: none; min-height: 38px;
+}
+.field select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234a5e7a' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 8px center; padding-right: 26px;
+}
+.field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
+.save-btn {
+  background: var(--navy-mid); color: var(--text-on-dark); border: none; border-radius: 7px;
+  padding: 8px 12px; font-size: clamp(12px,3vw,13px); font-weight: 500; cursor: pointer;
+  white-space: nowrap; font-family: inherit; min-height: 38px; flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.save-btn:active { background: var(--navy-light); }
+
+/* GRAPH PANEL in detail */
+.graph-panel {
+  background: var(--navy-dark); border-radius: 12px;
+  border: 1px solid var(--border-dark); padding: 12px; margin-bottom: 12px;
+}
+.graph-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.graph-top span { color: var(--text-on-dark); font-size: 13px; font-weight: 500; }
+.chart-wrap {
+  position: relative; width: 100%; height: 150px;
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 10px;
+  overflow: hidden; background: #0d1e36;
+}
+.zoom-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.zoom-row label { color: var(--text-muted-dark); font-size: 11px; white-space: nowrap; }
+.zoom-row input[type="range"] { flex: 1; height: 4px; accent-color: var(--accent); cursor: pointer; }
+.entry-list-title { color: var(--text-muted-dark); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; margin: 10px 0 6px; }
+.no-data { color: var(--text-muted-dark); font-size: 12px; text-align: center; padding: 24px 0; }
+
+/* TOAST */
+.toast {
+  position: fixed; bottom: calc(24px + var(--safe-bottom)); left: 50%; transform: translateX(-50%);
+  background: var(--navy-mid); color: var(--text-on-dark); padding: 10px 18px;
+  border-radius: 10px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 0.25s;
+  pointer-events: none; white-space: nowrap; z-index: 99; border: 1px solid var(--border-dark);
+}
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="top-bar">
+    <h1>Trainingsplan</h1>
+    <button class="menu-btn" id="menuBtn" aria-label="Menü öffnen">&#9776;</button>
+  </div>
+  <div class="day-scroll" id="dayScroll"></div>
+  <div class="content" id="content"></div>
+</div>
+
+<!-- Menu overlay + drawer -->
+<div class="menu-overlay" id="menuOverlay"></div>
+<div class="menu-drawer" id="menuDrawer">
+  <button class="menu-close" id="menuClose">×</button>
+  <div style="clear:both"></div>
+
+  <div class="menu-section-title">Farbschema</div>
+  <div class="theme-options" id="themeOptions"></div>
+
+  <div class="menu-section-title">Körpergewicht</div>
+  <div class="bw-section">
+    <div class="bw-input-row">
+      <div class="bw-field"><label>Gewicht (kg)</label><input type="number" id="bwKg" min="0" step="0.1" placeholder="z.B. 80" inputmode="decimal"></div>
+      <div class="bw-field"><label>Datum</label><input type="date" id="bwDatum"></div>
+      <button class="bw-save-btn" id="bwSave">+</button>
+    </div>
+    <div class="bw-chart-wrap"><canvas id="bwChart"></canvas></div>
+    <div class="bw-zoom-row" id="bwZoomRow" style="display:none">
+      <label>Zoom</label>
+      <input type="range" id="bwZoom" min="2" max="2" value="2" step="1">
+      <span class="zoom-val" id="bwZoomVal">2</span>
+    </div>
+    <div class="bw-entry-list" id="bwEntryList"></div>
+  </div>
+</div>
+
+<!-- Detail view -->
+<div class="detail-view" id="detailView">
+  <div class="detail-topbar">
+    <button class="back-btn" id="backBtn">&#8592;</button>
+    <span class="detail-title" id="detailTitle">Übung</span>
+    <button class="detail-del-btn" id="detailDelBtn">Löschen</button>
+  </div>
+  <div class="detail-body" id="detailBody"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ── THEMES ──────────────────────────────────────────────
+const THEMES = {
+  navy: {
+    label:'Navy', top:'#122140', bot:'#f7f4ee',
+    vars: {
+      '--bg':'#f7f4ee','--navy-dark':'#0a1628','--navy':'#122140',
+      '--navy-mid':'#1a3055','--navy-light':'#224070','--accent':'#2a6fad',
+      '--text-on-dark':'#f0ece3','--text-muted-dark':'#8faac8',
+      '--text-on-light':'#0d1f36','--text-muted-light':'#4a5e7a',
+      '--border-dark':'rgba(255,255,255,0.1)','--border-light':'rgba(10,22,40,0.14)',
+      '--card':'#ffffff'
+    }
+  },
+  green: {
+    label:'Grün', top:'#0d2b1a', bot:'#f0f7f2',
+    vars: {
+      '--bg':'#f0f7f2','--navy-dark':'#071510','--navy':'#0d2b1a',
+      '--navy-mid':'#174d2e','--navy-light':'#1f6b3e','--accent':'#27a058',
+      '--text-on-dark':'#e8f5ed','--text-muted-dark':'#7bbf97',
+      '--text-on-light':'#071510','--text-muted-light':'#3a6b4e',
+      '--border-dark':'rgba(255,255,255,0.1)','--border-light':'rgba(7,21,16,0.14)',
+      '--card':'#ffffff'
+    }
+  },
+  red: {
+    label:'Rot', top:'#2b0d0d', bot:'#faf0f0',
+    vars: {
+      '--bg':'#faf0f0','--navy-dark':'#160707','--navy':'#2b0d0d',
+      '--navy-mid':'#4d1717','--navy-light':'#6b1f1f','--accent':'#c0392b',
+      '--text-on-dark':'#f5e8e8','--text-muted-dark':'#c78585',
+      '--text-on-light':'#160707','--text-muted-light':'#7a3a3a',
+      '--border-dark':'rgba(255,255,255,0.1)','--border-light':'rgba(22,7,7,0.14)',
+      '--card':'#ffffff'
+    }
+  },
+  yellow: {
+    label:'Gelb', top:'#2b2200', bot:'#fdf8e8',
+    vars: {
+      '--bg':'#fdf8e8','--navy-dark':'#1a1500','--navy':'#2b2200',
+      '--navy-mid':'#4a3b00','--navy-light':'#6b5500','--accent':'#d4a017',
+      '--text-on-dark':'#fdf5d0','--text-muted-dark':'#c8a84b',
+      '--text-on-light':'#1a1500','--text-muted-light':'#6b5500',
+      '--border-dark':'rgba(255,255,255,0.1)','--border-light':'rgba(26,21,0,0.14)',
+      '--card':'#ffffff'
+    }
+  },
+  black: {
+    label:'Schwarz', top:'#1a1a1a', bot:'#2e2e2e',
+    vars: {
+      '--bg':'#1e1e1e','--navy-dark':'#0a0a0a','--navy':'#1a1a1a',
+      '--navy-mid':'#2a2a2a','--navy-light':'#3a3a3a','--accent':'#888888',
+      '--text-on-dark':'#f0f0f0','--text-muted-dark':'#888888',
+      '--text-on-light':'#f0f0f0','--text-muted-light':'#aaaaaa',
+      '--border-dark':'rgba(255,255,255,0.1)','--border-light':'rgba(255,255,255,0.1)',
+      '--card':'#2a2a2a'
+    }
+  },
+  white: {
+    label:'Hell', top:'#e8e4dc', bot:'#ffffff',
+    vars: {
+      '--bg':'#ffffff','--navy-dark':'#dedad2','--navy':'#e8e4dc',
+      '--navy-mid':'#d0cbc0','--navy-light':'#b8b2a6','--accent':'#2a6fad',
+      '--text-on-dark':'#1a1a2e','--text-muted-dark':'#5a5a6e',
+      '--text-on-light':'#1a1a2e','--text-muted-light':'#5a5a6e',
+      '--border-dark':'rgba(0,0,0,0.1)','--border-light':'rgba(0,0,0,0.1)',
+      '--card':'#f8f8f8'
+    }
+  }
+};
+
+function applyTheme(key) {
+  const t = THEMES[key];
+  if (!t) return;
+  const root = document.documentElement;
+  Object.entries(t.vars).forEach(([k,v]) => root.style.setProperty(k, v));
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', t.vars['--navy-dark']);
+  localStorage.setItem('wt_theme', key);
+  document.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('active', b.dataset.theme === key));
+}
+
+function buildThemeButtons() {
+  const container = document.getElementById('themeOptions');
+  const saved = localStorage.getItem('wt_theme') || 'navy';
+  Object.entries(THEMES).forEach(([key, t]) => {
+    const btn = document.createElement('button');
+    btn.className = 'theme-btn' + (key === saved ? ' active' : '');
+    btn.dataset.theme = key;
+    btn.title = t.label;
+    btn.innerHTML = `<div class="swatch-top" style="background:${t.top}"></div><div class="swatch-bot" style="background:${t.bot}"></div>`;
+    btn.addEventListener('click', () => applyTheme(key));
+    container.appendChild(btn);
+  });
+  applyTheme(saved);
+}
+
+// ── DATA ────────────────────────────────────────────────
+const DAYS = ['Mo','Di','Mi','Do','Fr','Sa','So'];
+const FULLDAYS = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+
+let activeDay = (() => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1; })();
+let data = {};
+let bwData = [];
+let detailDay = 0, detailIdx = 0;
+
+function load() {
+  try { const r = localStorage.getItem('wt_v3'); if (r) data = JSON.parse(r); } catch(e) {}
+  try { const r = localStorage.getItem('wt_bw'); if (r) bwData = JSON.parse(r); } catch(e) {}
+  for (let d = 0; d < 7; d++) { if (!data[d]) data[d] = []; }
+}
+function save() { try { localStorage.setItem('wt_v3', JSON.stringify(data)); } catch(e) {} }
+function saveBw() { try { localStorage.setItem('wt_bw', JSON.stringify(bwData)); } catch(e) {} }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function getMaxKg(eintraege) {
+  if (!eintraege || eintraege.length === 0) return null;
+  return Math.max(...eintraege.map(e => parseFloat(e.kg) || 0));
+}
+
+function sampleEntries(sorted, n) {
+  if (sorted.length <= n) return sorted;
+  const result = [];
+  for (let i = 0; i < n; i++) {
+    const idx = Math.round(i * (sorted.length - 1) / (n - 1));
+    result.push(sorted[idx]);
+  }
+  return result;
+}
+
+// ── CHART ───────────────────────────────────────────────
+function drawChart(canvasId, entries, zoomN) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  if (!entries || entries.length === 0) return;
+  const sorted = [...entries].sort((a,b) => new Date(a.datum) - new Date(b.datum));
+  const n = zoomN || sorted.length;
+  const displayed = sampleEntries(sorted, n);
+  const labels = displayed.map(e => new Date(e.datum).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'}));
+  const vals = displayed.map(e => parseFloat(e.kg) || 0);
+  if (canvas._chart) canvas._chart.destroy();
+  canvas._chart = new Chart(canvas, {
+    type: 'line',
+    data: { labels, datasets: [{ data: vals, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#2a6fad', backgroundColor: 'rgba(42,111,173,0.15)', borderWidth: 2, pointBackgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#2a6fad', pointRadius: 4, pointHoverRadius: 6, fill: true, tension: 0.35 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top:8, right:8, bottom:4, left:4 } },
+      plugins: { legend: { display: false }, tooltip: { backgroundColor:'#1a3055', titleColor:'#8faac8', bodyColor:'#f0ece3', callbacks: { label: ctx => ctx.parsed.y + ' kg' } } },
+      scales: {
+        x: { ticks: { color:'#8faac8', font:{size:10}, maxRotation:0, autoSkip:true, maxTicksLimit:6 }, grid: { color:'rgba(255,255,255,0.05)' }, border: { color:'rgba(255,255,255,0.08)' } },
+        y: { ticks: { color:'#8faac8', font:{size:10}, callback: v => v+' kg' }, grid: { color:'rgba(255,255,255,0.05)' }, border: { color:'rgba(255,255,255,0.08)' }, min:0 }
+      }
+    }
+  });
+}
+
+// ── BODY WEIGHT ─────────────────────────────────────────
+function renderBwChart() {
+  if (bwData.length === 0) return;
+  const slider = document.getElementById('bwZoom');
+  const zoomN = slider ? parseInt(slider.value) : bwData.length;
+  drawChart('bwChart', bwData, zoomN);
+}
+
+function renderBwList(showAll) {
+  const container = document.getElementById('bwEntryList');
+  if (!container) return;
+  const sorted = [...bwData].sort((a,b) => new Date(b.datum) - new Date(a.datum));
+  if (sorted.length === 0) { container.innerHTML = ''; return; }
+  const visible = showAll ? sorted : sorted.slice(0,5);
+  let html = '';
+  visible.forEach(e => {
+    const origIdx = bwData.indexOf(bwData.find(x => x.datum===e.datum && x.kg===e.kg));
+    html += `<div class="entry-item">
+      <div class="entry-info">
+        <span class="entry-date">${new Date(e.datum).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'})}</span>
+        <span class="entry-kg">${e.kg} kg</span>
+      </div>
+      <button class="entry-del" data-oi="${origIdx}" aria-label="Löschen">×</button>
+    </div>`;
+  });
+  if (!showAll && sorted.length > 5) {
+    html += `<button class="show-all-btn" id="bwShowAll">Alle ${sorted.length} anzeigen</button>`;
+  }
+  container.innerHTML = html;
+  container.querySelectorAll('.entry-del').forEach(btn => {
+    btn.addEventListener('click', () => {
+      bwData.splice(parseInt(btn.dataset.oi), 1);
+      saveBw();
+      const total = bwData.length;
+      const zoomRow = document.getElementById('bwZoomRow');
+      const slider = document.getElementById('bwZoom');
+      if (total > 1) {
+        zoomRow.style.display = 'flex';
+        slider.max = total; slider.value = total;
+        document.getElementById('bwZoomVal').textContent = total;
+      } else { zoomRow.style.display = 'none'; }
+      renderBwList(false);
+      if (total > 0) renderBwChart(); else { const c = document.getElementById('bwChart'); if(c&&c._chart){c._chart.destroy();} }
+      showToast('Eintrag gelöscht');
+    });
+  });
+  const sab = document.getElementById('bwShowAll');
+  if (sab) sab.addEventListener('click', () => renderBwList(true));
+}
+
+function initBwSection() {
+  document.getElementById('bwDatum').value = new Date().toISOString().slice(0,10);
+  const total = bwData.length;
+  const zoomRow = document.getElementById('bwZoomRow');
+  const slider = document.getElementById('bwZoom');
+  if (total > 1) {
+    zoomRow.style.display = 'flex';
+    slider.max = total; slider.value = total;
+    document.getElementById('bwZoomVal').textContent = total;
+    renderBwChart();
+  }
+  renderBwList(false);
+
+  document.getElementById('bwSave').addEventListener('click', () => {
+    const kg = parseFloat(document.getElementById('bwKg').value);
+    const datum = document.getElementById('bwDatum').value;
+    if (!kg || isNaN(kg) || kg <= 0) { showToast('Bitte ein gültiges Gewicht eingeben'); return; }
+    if (!datum) { showToast('Bitte ein Datum angeben'); return; }
+    bwData.push({ kg: Math.round(kg*10)/10, datum });
+    document.getElementById('bwKg').value = '';
+    saveBw();
+    const newTotal = bwData.length;
+    if (newTotal > 1) {
+      zoomRow.style.display = 'flex';
+      slider.max = newTotal; slider.value = newTotal;
+      document.getElementById('bwZoomVal').textContent = newTotal;
+    }
+    renderBwList(false); renderBwChart();
+    showToast('Körpergewicht gespeichert!');
+  });
+
+  slider.addEventListener('input', () => {
+    const n = parseInt(slider.value);
+    document.getElementById('bwZoomVal').textContent = n;
+    renderBwChart();
+  });
+}
+
+// ── MENU ────────────────────────────────────────────────
+function openMenu() {
+  document.getElementById('menuOverlay').classList.add('open');
+  document.getElementById('menuDrawer').classList.add('open');
+}
+function closeMenu() {
+  document.getElementById('menuOverlay').classList.remove('open');
+  document.getElementById('menuDrawer').classList.remove('open');
+}
+document.getElementById('menuBtn').addEventListener('click', openMenu);
+document.getElementById('menuClose').addEventListener('click', closeMenu);
+document.getElementById('menuOverlay').addEventListener('click', closeMenu);
+
+// ── ENTRY LIST (exercise) ────────────────────────────────
+function renderExEntryList(day, idx, showAll) {
+  const container = document.getElementById('ex-entrylist');
+  if (!container) return;
+  const entries = (data[day][idx].eintraege||[]).slice().sort((a,b)=>new Date(b.datum)-new Date(a.datum));
+  if (entries.length===0){container.innerHTML='';return;}
+  const visible = showAll ? entries : entries.slice(0,5);
+  let html = '<div class="entry-list-title">Einträge</div>';
+  visible.forEach(e => {
+    const origIdx = (data[day][idx].eintraege||[]).indexOf((data[day][idx].eintraege||[]).find(x=>x.datum===e.datum&&x.kg===e.kg));
+    html += `<div class="entry-item">
+      <div class="entry-info">
+        <span class="entry-date">${new Date(e.datum).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'})}</span>
+        <span class="entry-kg">${e.kg} kg</span>
+      </div>
+      <button class="entry-del" data-oi="${origIdx}" aria-label="Löschen">×</button>
+    </div>`;
+  });
+  if (!showAll && entries.length>5) {
+    html += `<button class="show-all-btn" id="exShowAll">Alle ${entries.length} anzeigen</button>`;
+  }
+  container.innerHTML = html;
+  container.querySelectorAll('.entry-del').forEach(btn => {
+    btn.addEventListener('click', () => {
+      data[day][idx].eintraege.splice(parseInt(btn.dataset.oi),1);
+      save();
+      const maxKg = getMaxKg(data[day][idx].eintraege);
+      renderExEntryList(day, idx, showAll);
+      updateDetailZoom(day, idx);
+      const zoomSlider = document.getElementById('ex-zoom');
+      const zoomN = zoomSlider ? parseInt(zoomSlider.value) : undefined;
+      drawChart('ex-chart', data[day][idx].eintraege, zoomN);
+      renderOverviewCard(day, idx);
+      showToast('Eintrag gelöscht');
+    });
+  });
+  const sab = document.getElementById('exShowAll');
+  if (sab) sab.addEventListener('click', () => renderExEntryList(day, idx, true));
+}
+
+function updateDetailZoom(day, idx) {
+  const total = (data[day][idx].eintraege||[]).length;
+  const zoomRow = document.getElementById('ex-zoomrow');
+  const slider = document.getElementById('ex-zoom');
+  const valEl = document.getElementById('ex-zoomval');
+  if (!zoomRow||!slider) return;
+  if (total > 1) {
+    zoomRow.style.display = 'flex';
+    slider.max = total; slider.value = total;
+    if (valEl) valEl.textContent = total;
+  } else { zoomRow.style.display = 'none'; }
+}
+
+function renderOverviewCard(day, idx) {
+  const card = document.getElementById(`ov-card-${day}-${idx}`);
+  if (!card) return;
+  const ex = data[day][idx];
+  const maxKg = getMaxKg(ex.eintraege);
+  card.querySelector('.ex-ov-name').textContent = ex.name || 'Übungsname…';
+  card.querySelector('.ex-ov-name').className = 'ex-ov-name' + (ex.name ? '' : ' placeholder');
+  card.querySelector('.ex-ov-meta').textContent = `${ex.saetze} Sätze · ${ex.wdh} Wdh.`;
+  card.querySelector('.ex-ov-kg').textContent = maxKg !== null ? maxKg + ' kg' : '— kg';
+}
+
+// ── DETAIL VIEW ──────────────────────────────────────────
+function openDetail(day, idx) {
+  detailDay = day; detailIdx = idx;
+  const ex = data[day][idx];
+  document.getElementById('detailTitle').textContent = ex.name || 'Übung bearbeiten';
+  const body = document.getElementById('detailBody');
+  const total = (ex.eintraege||[]).length;
+  const zoomDefault = total;
+
+  body.innerHTML = `
+    <div class="detail-section">
+      <div class="detail-section-title">Name</div>
+      <div class="field"><input type="text" id="det-name" value="${(ex.name||'').replace(/"/g,'&quot;')}" placeholder="Übungsname…" autocomplete="off"></div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-title">Einstellungen</div>
+      <div class="row">
+        <div class="field"><label>Sätze</label>
+          <select id="det-saetze">${[1,2,3,4,5].map(n=>`<option value="${n}"${ex.saetze==n?' selected':''}>${n}</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>Wiederholungen</label>
+          <select id="det-wdh">${Array.from({length:30},(_,i)=>i+1).map(n=>`<option value="${n}"${ex.wdh==n?' selected':''}>${n}</option>`).join('')}</select>
+        </div>
+      </div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-title">Gewicht eintragen</div>
+      <div class="row">
+        <div class="field"><label>Gewicht (kg)</label><input type="number" id="det-kg" min="0" step="0.5" placeholder="z.B. 80" inputmode="decimal"></div>
+        <div class="field"><label>Datum</label><input type="date" id="det-datum" value="${new Date().toISOString().slice(0,10)}"></div>
+        <button class="save-btn" id="det-save">Speichern</button>
+      </div>
+    </div>
+    <div class="graph-panel" id="ex-graphpanel">
+      <div class="graph-top">
+        <span>${ex.name||'Übung'} — Max. Gewicht</span>
+      </div>
+      <div class="chart-wrap"><canvas id="ex-chart" role="img"></canvas></div>
+      <div class="zoom-row" id="ex-zoomrow" style="display:${total>1?'flex':'none'}">
+        <label>Zoom</label>
+        <input type="range" id="ex-zoom" min="2" max="${Math.max(total,2)}" value="${zoomDefault}" step="1">
+        <span class="zoom-val" id="ex-zoomval">${zoomDefault}</span>
+      </div>
+      <div id="ex-entrylist"></div>
+    </div>
+  `;
+
+  document.getElementById('det-name').addEventListener('input', e => {
+    data[day][idx].name = e.target.value; save();
+    document.getElementById('detailTitle').textContent = e.target.value || 'Übung bearbeiten';
+    renderOverviewCard(day, idx);
+  });
+  document.getElementById('det-saetze').addEventListener('change', e => { data[day][idx].saetze = parseInt(e.target.value); save(); renderOverviewCard(day, idx); });
+  document.getElementById('det-wdh').addEventListener('change', e => { data[day][idx].wdh = parseInt(e.target.value); save(); renderOverviewCard(day, idx); });
+
+  document.getElementById('det-save').addEventListener('click', () => {
+    const kg = parseFloat(document.getElementById('det-kg').value);
+    const datum = document.getElementById('det-datum').value;
+    if (!kg || isNaN(kg) || kg <= 0) { showToast('Bitte ein gültiges Gewicht eingeben'); return; }
+    if (!datum) { showToast('Bitte ein Datum angeben'); return; }
+    data[day][idx].eintraege = data[day][idx].eintraege || [];
+    data[day][idx].eintraege.push({ kg: Math.round(kg*10)/10, datum });
+    document.getElementById('det-kg').value = '';
+    save();
+    renderOverviewCard(day, idx);
+    renderExEntryList(day, idx, false);
+    updateDetailZoom(day, idx);
+    const zoomSlider = document.getElementById('ex-zoom');
+    const zoomN = zoomSlider ? parseInt(zoomSlider.value) : undefined;
+    setTimeout(() => drawChart('ex-chart', data[day][idx].eintraege, zoomN), 50);
+    showToast('Gespeichert!');
+  });
+
+  const zoomSlider = document.getElementById('ex-zoom');
+  if (zoomSlider) {
+    zoomSlider.addEventListener('input', () => {
+      const n = parseInt(zoomSlider.value);
+      document.getElementById('ex-zoomval').textContent = n;
+      drawChart('ex-chart', data[day][idx].eintraege, n);
+    });
+  }
+
+  renderExEntryList(day, idx, false);
+  if (total > 0) setTimeout(() => drawChart('ex-chart', data[day][idx].eintraege, zoomDefault), 80);
+
+  document.getElementById('detailView').classList.add('open');
+}
+
+document.getElementById('backBtn').addEventListener('click', () => {
+  document.getElementById('detailView').classList.remove('open');
+});
+
+document.getElementById('detailDelBtn').addEventListener('click', () => {
+  if (confirm('Übung löschen?')) {
+    data[detailDay].splice(detailIdx, 1);
+    save();
+    document.getElementById('detailView').classList.remove('open');
+    render();
+  }
+});
+
+// ── MAIN RENDER ──────────────────────────────────────────
+function addExercise(day) {
+  if (data[day].length >= 10) { showToast('Max. 10 Übungen pro Tag'); return; }
+  data[day].push({ name: '', saetze: 3, wdh: 10, eintraege: [] });
+  save(); render();
+}
+
+function render() {
+  const scroll = document.getElementById('dayScroll');
+  scroll.innerHTML = '';
+  DAYS.forEach((d, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'day-btn' + (i === activeDay ? ' active' : '');
+    btn.textContent = d;
+    btn.onclick = () => { activeDay = i; render(); };
+    scroll.appendChild(btn);
+  });
+
+  const content = document.getElementById('content');
+  content.innerHTML = '';
+  const day = activeDay;
+  const exercises = data[day] || [];
+
+  exercises.forEach((ex, idx) => {
+    const maxKg = getMaxKg(ex.eintraege);
+    const card = document.createElement('div');
+    card.className = 'ex-overview-card';
+    card.id = `ov-card-${day}-${idx}`;
+    card.innerHTML = `
+      <div class="ex-ov-info">
+        <div class="ex-ov-name${ex.name?'':' placeholder'}">${ex.name||'Übungsname…'}</div>
+        <div class="ex-ov-meta">${ex.saetze} Sätze · ${ex.wdh} Wdh.</div>
+      </div>
+      <div class="ex-ov-right">
+        <span class="ex-ov-kg">${maxKg!==null?maxKg+' kg':'— kg'}</span>
+        <span class="ex-ov-arrow">›</span>
+      </div>
+    `;
+    card.addEventListener('click', () => openDetail(day, idx));
+    content.appendChild(card);
+  });
+
+  const addBtn = document.createElement('button');
+  addBtn.className = 'add-ex-btn';
+  addBtn.innerHTML = '+ Übung hinzufügen' + (exercises.length>0?` (${exercises.length}/10)`:'');
+  addBtn.onclick = () => addExercise(day);
+  content.appendChild(addBtn);
+}
+
+// ── INIT ─────────────────────────────────────────────────
+load();
+buildThemeButtons();
+initBwSection();
+render();
+</script>
+</body>
+</html>
